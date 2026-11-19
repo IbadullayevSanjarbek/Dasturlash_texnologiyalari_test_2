@@ -13,7 +13,7 @@ input[type=text]{width:100%;box-sizing:border-box;padding:10px;border:1px solid 
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .chip{padding:8px 14px;border:1px solid var(--bd);border-radius:20px;background:var(--bg);color:var(--tx);cursor:pointer;font:inherit}
 .chip.on{background:var(--ac);color:var(--bg);border-color:var(--ac)}
-.btn{padding:11px 18px;border:0;border-radius:8px;background:var(--ac);color:var(--bg);font:inherit;font-weight:600;cursor:pointer;margin:8px 8px 0 0}
+.btn:disabled{cursor:default}.btn{padding:11px 18px;border:0;border-radius:8px;background:var(--ac);color:var(--bg);font:inherit;font-weight:600;cursor:pointer;margin:8px 8px 0 0}
 .btn.sec{background:transparent;color:var(--tx);border:1px solid var(--bd)}
 .qn{color:var(--mut);font-size:.8rem}.qt{font-weight:600;margin:2px 0 10px}
 .opt{display:block;width:100%;text-align:left;padding:10px 12px;margin:6px 0;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font:inherit;cursor:pointer}
@@ -28,8 +28,8 @@ input[type=text]{width:100%;box-sizing:border-box;padding:10px;border:1px solid 
 <label>Savollar soni:</label><div class="row" id="cnt"></div>
 <p class="sub" style="margin-top:12px">Savollar tasodifiy tanlanadi, savollar va javob variantlari har safar aralashtiriladi. Javob tanlangan zahoti natija ko‘rsatiladi va uni o‘zgartirib bo‘lmaydi.</p>
 <button class="btn" id="start">Boshlash</button></section>
-<section id="quiz" class="hid"><div class="bar" id="prog"></div><div id="list"></div>
-<button class="btn" id="fin">Yakunlash va natijani ko‘rish</button></section>
+<section id="quiz" class="hid"><div class="bar" id="prog"></div><div id="card" class="card"></div>
+<div class="row"><button class="btn sec" id="prev">← Orqaga</button><button class="btn" id="next">O‘tkazish →</button><button class="btn sec" id="fin">Yakunlash</button></div></section>
 <section id="res" class="card hid"><h2 style="margin-top:0">Natija</h2><div class="score" id="sc"></div><div id="who" class="sub"></div>
 <button class="btn" id="redo">Xatolarni qayta ishlash</button><button class="btn sec" id="again">Yangi mashq</button></section>
 </main>
@@ -43,23 +43,28 @@ try{const s=localStorage.getItem('fio');if(s)$('nm').value=s}catch(e){}
 const opts=[10,20,30,DATA.length].filter((v,i,a)=>v<=DATA.length&&a.indexOf(v)===i);
 if(opts.indexOf(N)<0)N=opts[0];
 opts.forEach(v=>{const b=document.createElement('button');b.className='chip'+(v===N?' on':'');b.textContent=v===DATA.length?'Hammasi':v;b.onclick=()=>{N=v;[...$('cnt').children].forEach(c=>c.classList.remove('on'));b.classList.add('on')};$('cnt').appendChild(b)});
+let idx=0;
 function run(items){
-  cur=shuf(items).map(q=>{const o=shuf(q.o.map((t,i)=>({t,ok:i===q.c})));return{q:q.q,o:o,raw:q}});
-  state=cur.map(()=>null);
-  $('setup').classList.add('hid');$('res').classList.add('hid');$('quiz').classList.remove('hid');
-  const L=$('list');L.innerHTML='';
-  cur.forEach((q,qi)=>{
-    const d=document.createElement('div');d.className='card';
-    d.innerHTML='<div class="qn">Savol '+(qi+1)+' / '+cur.length+'</div><div class="qt"></div>';
-    d.querySelector('.qt').textContent=q.q;
-    const bs=q.o.map((o,oi)=>{const b=document.createElement('button');b.className='opt';b.textContent=o.t;
-      b.onclick=()=>{if(state[qi]!==null)return;state[qi]=oi;
-        bs.forEach((x,i)=>{x.disabled=true;if(q.o[i].ok)x.classList.add('ok')});
-        if(!o.ok)b.classList.add('bad');upd()};
-      d.appendChild(b);return b});
-    L.appendChild(d)});
-  upd();window.scrollTo(0,0)}
-function upd(){const a=state.filter(x=>x!==null).length;$('prog').textContent='Javob berilgan: '+a+' / '+cur.length}
+  cur=shuf(items).map(q=>({q:q.q,o:shuf(q.o.map((t,i)=>({t,ok:i===q.c}))),raw:q}));
+  state=cur.map(()=>null);idx=0;
+  $('setup').classList.add('hid');$('res').classList.add('hid');$('quiz').classList.remove('hid');show();window.scrollTo(0,0)}
+function show(){
+  const q=cur[idx],c=$('card');
+  c.innerHTML='<div class="qn">Savol '+(idx+1)+' / '+cur.length+'</div><div class="qt"></div>';
+  c.querySelector('.qt').textContent=q.q;
+  const ans=state[idx]!==null;
+  const bs=q.o.map((o,oi)=>{const b=document.createElement('button');b.className='opt';b.textContent=o.t;
+    b.onclick=()=>{if(state[idx]!==null)return;state[idx]=oi;show()};c.appendChild(b);return b});
+  if(ans)bs.forEach((x,i)=>{x.disabled=true;if(q.o[i].ok)x.classList.add('ok');else if(i===state[idx])x.classList.add('bad')});
+  const last=idx===cur.length-1;
+  $('prev').disabled=idx===0;$('prev').style.opacity=idx===0?.4:1;
+  $('next').classList.toggle('hid',last);
+  $('next').textContent=ans?'Keyingi →':'O‘tkazish →';
+  $('fin').classList.toggle('sec',!last);
+  const a=state.filter(x=>x!==null).length;
+  $('prog').textContent='Javob berilgan: '+a+' / '+cur.length}
+$('prev').onclick=()=>{if(idx>0){idx--;show()}};
+$('next').onclick=()=>{if(idx<cur.length-1){idx++;show()}};
 $('start').onclick=()=>{const n=$('nm').value.trim();if(!n){$('nm').focus();return}
   try{localStorage.setItem('fio',n)}catch(e){}
   run(shuf(DATA).slice(0,N))};
@@ -67,9 +72,8 @@ $('fin').onclick=()=>{
   const right=cur.filter((q,i)=>state[i]!==null&&q.o[state[i]].ok).length;
   $('sc').textContent=right+' / '+cur.length+' ('+Math.round(right/cur.length*100)+'%)';
   $('who').textContent=$('nm').value.trim()+' · javob berilmagan: '+state.filter(x=>x===null).length;
-  $('res').classList.remove('hid');$('redo').classList.toggle('hid',right===cur.length);
-  cur.forEach((q,i)=>{if(state[i]===null){[...$('list').children[i].querySelectorAll('.opt')].forEach((x,k)=>{x.disabled=true;if(q.o[k].ok)x.classList.add('ok')});state[i]=-1}});
-  $('res').scrollIntoView({behavior:'smooth'})};
-$('redo').onclick=()=>{const w=cur.filter((q,i)=>state[i]<0||!q.o[state[i]].ok).map(q=>q.raw);run(w)};
+  $('quiz').classList.add('hid');$('res').classList.remove('hid');$('redo').classList.toggle('hid',right===cur.length);
+  window.scrollTo(0,0)};
+$('redo').onclick=()=>{const w=cur.filter((q,i)=>state[i]===null||!q.o[state[i]].ok).map(q=>q.raw);run(w)};
 $('again').onclick=()=>{$('quiz').classList.add('hid');$('res').classList.add('hid');$('setup').classList.remove('hid');window.scrollTo(0,0)};
 </script></body></html>
